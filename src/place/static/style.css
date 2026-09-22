@@ -186,21 +186,23 @@ button {
 /* Main Viewport */
 .canvas-viewport {
   flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   position: relative;
   background: radial-gradient(circle at center, #171b26 0%, #0d0f14 100%);
   padding: 12px;
-  overflow: hidden;
+  overflow: auto;
+  display: block;
 }
 
 .canvas-wrapper {
   position: relative;
+  display: inline-block;
+  margin: auto;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.08);
   border-radius: 4px;
   background-color: #ffffff;
   overflow: hidden;
+  transform-origin: center center;
+  transition: transform 0.12s ease;
   /* Pixel art rendering */
   image-rendering: -moz-crisp-edges;
   image-rendering: -webkit-crisp-edges;
