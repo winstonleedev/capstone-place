@@ -4,7 +4,6 @@ A single-screen collaborative pixel canvas inspired by Reddit's r/place. Built w
 
 ## Features
 
-- 🖥️ **Single-Screen Fit**: A 64×64 pixel grid configured with crisp pixel rendering (`image-rendering: pixelated`) sized to maximize viewport space without page scrolling.
 - 🖥️ **Single-Screen Fit**: A 96×64 pixel grid configured with crisp pixel rendering (`image-rendering: pixelated`) sized to maximize viewport space without page scrolling.
 - 🎨 **Full RGB Color Selection**: Pick any 24-bit RGB color with a native color picker, hex code input (`#RRGGBB`), or a 27-color quick-select palette. Includes an **Eyedropper** tool to sample colors directly from the canvas.
 - ⏱️ **Per-IP Rate Limiting**: Enforces a strict limit of **10 pixel placements per minute** per client IP using an atomic sliding-window algorithm. Returns HTTP 429 with `Retry-After` headers and live UI cooldown feedback.
@@ -43,7 +42,6 @@ You can configure the server using CLI arguments or environment variables:
 
 | Setting | Env Var | Default | Description |
 | :--- | :--- | :--- | :--- |
-| **Grid Width** | `PLACE_GRID_WIDTH` | `64` | Number of horizontal pixels |
 | **Grid Width** | `PLACE_GRID_WIDTH` | `96` | Number of horizontal pixels |
 | **Grid Height** | `PLACE_GRID_HEIGHT` | `64` | Number of vertical pixels |
 | **Rate Limit** | `PLACE_RATE_LIMIT_PIXELS` | `10` | Allowed pixels per window |

@@ -1,6 +1,5 @@
 (() => {
   // State variables
-  let gridWidth = 64;
   let gridWidth = 96;
   let gridHeight = 64;
   let maxTokens = 10;
@@ -112,15 +111,10 @@
 
   // Canvas Viewport & Scaling
   function resizeCanvasDisplay() {
-    const availWidth = viewport.clientWidth - 24;
-    const availHeight = viewport.clientHeight - 24;
-    const maxSide = Math.max(100, Math.min(availWidth, availHeight));
     const availWidth = Math.max(100, viewport.clientWidth - 24);
     const availHeight = Math.max(100, viewport.clientHeight - 24);
     const aspectRatio = gridWidth / gridHeight;
 
-    canvasWrapper.style.width = `${maxSide}px`;
-    canvasWrapper.style.height = `${maxSide}px`;
     let displayWidth = availWidth;
     let displayHeight = displayWidth / aspectRatio;
 
@@ -136,8 +130,6 @@
     canvasWrapper.style.height = `${displayHeight}px`;
 
     // Ensure overlay canvas internal size matches display size for crisp grid drawing
-    overlayCanvas.width = maxSide;
-    overlayCanvas.height = maxSide;
     overlayCanvas.width = displayWidth;
     overlayCanvas.height = displayHeight;
 

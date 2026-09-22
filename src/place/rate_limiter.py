@@ -117,7 +117,6 @@ class SlidingWindowRateLimiter:
             return RateLimitStatus(
                 allowed=True,
                 remaining=remaining,
-                retry_after=0.0,
                 retry_after=round(retry_after, 2),
                 reset_in=round(reset_in, 2),
             )

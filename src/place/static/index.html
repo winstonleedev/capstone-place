@@ -4,8 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>place - Collaborative Pixel Canvas</title>
-  <link rel="stylesheet" href="/static/style.css">
-  <link rel="stylesheet" href="/static/style.css?v=2">
   <link rel="stylesheet" href="/static/style.css?v=3">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='50' height='50' fill='%23e63946'/><rect x='50' width='50' height='50' fill='%23457b9d'/><rect y='50' width='50' height='50' fill='%232a9d8f'/><rect x='50' y='50' width='50' height='50' fill='%23e9c46a'/></svg>">
 </head>
@@ -15,7 +13,6 @@
     <header class="top-bar">
       <div class="brand">
         <span class="logo-pixel">r/</span><span class="logo-text">place</span>
-        <span class="grid-badge" id="gridSizeBadge">64×64</span>
         <span class="grid-badge" id="gridSizeBadge">96×64</span>
       </div>
 
@@ -47,8 +44,6 @@
     <!-- Main Canvas Area (Single Screen Fit) -->
     <main class="canvas-viewport" id="viewport">
       <div class="canvas-wrapper" id="canvasWrapper">
-        <canvas id="boardCanvas" width="64" height="64"></canvas>
-        <canvas id="overlayCanvas" width="64" height="64"></canvas>
         <canvas id="boardCanvas" width="96" height="64"></canvas>
         <canvas id="overlayCanvas" width="96" height="64"></canvas>
       </div>
@@ -95,8 +90,6 @@
   <!-- Toast Notification Container -->
   <div id="toastContainer" class="toast-container"></div>
 
-  <script src="/static/app.js"></script>
-  <script src="/static/app.js?v=2"></script>
   <script src="/static/app.js?v=3"></script>
 </body>
 </html>

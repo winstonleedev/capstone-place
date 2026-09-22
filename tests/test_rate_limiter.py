@@ -51,7 +51,6 @@ async def test_rate_limiter_allows_up_to_10_and_blocks_11th() -> None:
         status = await limiter.check_and_consume(ip)
         assert status.allowed is True
         assert status.remaining == 9 - i
-        assert status.retry_after == 0.0
         if i < 9:
             assert status.retry_after == 0.0
         else:
