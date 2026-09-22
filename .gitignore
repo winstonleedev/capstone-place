@@ -10,3 +10,5 @@ wheels/
 .venv
 
 *.bin
+.pytest-cache/
+**/__pycache__/
