@@ -144,6 +144,7 @@ def create_app(
             "y": payload.y,
             "color": color_hex,
             "remaining": limit_status.remaining,
+            "retry_after": limit_status.retry_after,
             "reset_in": limit_status.reset_in,
             "total_pixels_placed": board.total_pixels_placed,
         }

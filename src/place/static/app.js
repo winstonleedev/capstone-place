@@ -1,6 +1,7 @@
 (() => {
   // State variables
   let gridWidth = 64;
+  let gridWidth = 96;
   let gridHeight = 64;
   let maxTokens = 10;
   let windowSeconds = 60.0;
@@ -114,13 +115,31 @@
     const availWidth = viewport.clientWidth - 24;
     const availHeight = viewport.clientHeight - 24;
     const maxSide = Math.max(100, Math.min(availWidth, availHeight));
+    const availWidth = Math.max(100, viewport.clientWidth - 24);
+    const availHeight = Math.max(100, viewport.clientHeight - 24);
+    const aspectRatio = gridWidth / gridHeight;
 
     canvasWrapper.style.width = `${maxSide}px`;
     canvasWrapper.style.height = `${maxSide}px`;
+    let displayWidth = availWidth;
+    let displayHeight = displayWidth / aspectRatio;
+
+    if (displayHeight > availHeight) {
+      displayHeight = availHeight;
+      displayWidth = displayHeight * aspectRatio;
+    }
+
+    displayWidth = Math.floor(displayWidth);
+    displayHeight = Math.floor(displayHeight);
+
+    canvasWrapper.style.width = `${displayWidth}px`;
+    canvasWrapper.style.height = `${displayHeight}px`;
 
     // Ensure overlay canvas internal size matches display size for crisp grid drawing
     overlayCanvas.width = maxSide;
     overlayCanvas.height = maxSide;
+    overlayCanvas.width = displayWidth;
+    overlayCanvas.height = displayHeight;
 
     renderOverlay();
   }
@@ -184,6 +203,7 @@
 
   // Paint a single pixel on the main board canvas
   function paintPixel(x, y, hexColor) {
+    if (!hexColor.startsWith("#")) hexColor = "#" + hexColor;
     boardCtx.fillStyle = hexColor;
     boardCtx.fillRect(x, y, 1, 1);
   }
@@ -231,6 +251,7 @@
       quotaBarFill.classList.add("cooldown");
       quotaBarFill.style.width = "0%";
       const wait = Math.max(1, Math.ceil(retryAfterSeconds));
+      const wait = Math.max(1, Math.ceil(retryAfterSeconds || resetInSeconds));
       cooldownTimerEl.textContent = `Cooldown: wait ${wait}s`;
     } else {
       quotaBadge.classList.remove("exhausted");
@@ -269,26 +290,53 @@
     const elapsedSec = (now - lastQuotaCheckTime) / 1000.0;
     lastQuotaCheckTime = now;
 
+    let checkNeeded = false;
+
     if (retryAfterSeconds > 0) {
       retryAfterSeconds = Math.max(0, retryAfterSeconds - elapsedSec);
       if (retryAfterSeconds === 0) {
         // Cooldown just lifted!
         checkCooldown();
+        checkNeeded = true;
       }
     }
 
     if (resetInSeconds > 0) {
       resetInSeconds = Math.max(0, resetInSeconds - elapsedSec);
+      if (resetInSeconds === 0) {
+        checkNeeded = true;
+      }
     }
 
     updateQuotaUI();
   }, 500);
+    if (checkNeeded) {
+      checkCooldown();
+    } else {
+      updateQuotaUI();
+    }
+  }, 250);
+
+  // Periodic resync with server every 5 seconds
+  setInterval(checkCooldown, 5000);
+  window.addEventListener("focus", checkCooldown);
 
   // Mouse / Touch coordinate resolver
   function getGridCoordinates(event) {
     const rect = canvasWrapper.getBoundingClientRect();
     const clientX = event.touches ? event.touches[0].clientX : event.clientX;
     const clientY = event.touches ? event.touches[0].clientY : event.clientY;
+    let clientX, clientY;
+    if (event.touches && event.touches.length > 0) {
+      clientX = event.touches[0].clientX;
+      clientY = event.touches[0].clientY;
+    } else if (event.changedTouches && event.changedTouches.length > 0) {
+      clientX = event.changedTouches[0].clientX;
+      clientY = event.changedTouches[0].clientY;
+    } else {
+      clientX = event.clientX;
+      clientY = event.clientY;
+    }
 
     if (
       clientX < rect.left ||
@@ -301,6 +349,8 @@
 
     const normX = (clientX - rect.left) / rect.width;
     const normY = (clientY - rect.top) / rect.height;
+    const normX = Math.min(0.9999, Math.max(0, (clientX - rect.left) / rect.width));
+    const normY = Math.min(0.9999, Math.max(0, (clientY - rect.top) / rect.height));
 
     const gx = Math.floor(normX * gridWidth);
     const gy = Math.floor(normY * gridHeight);
@@ -330,10 +380,17 @@
     }
 
     // Check local quota
+    // Check local quota; if 0, verify with server before rejecting
     if (remainingTokens <= 0) {
       const wait = Math.max(1, Math.ceil(retryAfterSeconds));
       showToast(`Rate limited! You can place 10 pixels/min. Wait ${wait}s.`, "warning");
       return;
+      await checkCooldown();
+      if (remainingTokens <= 0) {
+        const wait = Math.max(1, Math.ceil(retryAfterSeconds || resetInSeconds || 1));
+        showToast(`Rate limited! 10 pixels/min max. Wait ${wait}s.`, "warning");
+        return;
+      }
     }
 
     const { x, y } = coord;
@@ -341,6 +398,7 @@
 
     // Optimistic local update
     paintPixel(x, y, colorToPlace);
+    renderOverlay();
 
     try {
       const res = await fetch("/api/pixel", {
@@ -357,6 +415,7 @@
         updateQuotaUI();
         const wait = Math.max(1, Math.ceil(retryAfterSeconds));
         showToast(`Rate limit reached: wait ${wait}s before next pixel.`, "error");
+        await loadBoard();
         return;
       }
 
@@ -369,10 +428,12 @@
       remainingTokens = data.remaining;
       resetInSeconds = data.reset_in;
       retryAfterSeconds = 0;
+      retryAfterSeconds = data.retry_after || (remainingTokens === 0 ? resetInSeconds : 0.0);
       updateQuotaUI();
     } catch (err) {
       console.error(err);
       showToast(err.message, "error");
+      await loadBoard();
     }
   }
 

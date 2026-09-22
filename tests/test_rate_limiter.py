@@ -52,6 +52,10 @@ async def test_rate_limiter_allows_up_to_10_and_blocks_11th() -> None:
         assert status.allowed is True
         assert status.remaining == 9 - i
         assert status.retry_after == 0.0
+        if i < 9:
+            assert status.retry_after == 0.0
+        else:
+            assert status.retry_after > 0.0  # Cooldown starts once all tokens are consumed
 
     # 11th should be blocked!
     status_11 = await limiter.check_and_consume(ip)

@@ -200,6 +200,7 @@ button {
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.08);
   border-radius: 4px;
   background-color: #ffffff;
+  overflow: hidden;
   /* Pixel art rendering */
   image-rendering: -moz-crisp-edges;
   image-rendering: -webkit-crisp-edges;
@@ -213,7 +214,14 @@ button {
 }
 
 #boardCanvas, #overlayCanvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
   display: block;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: -webkit-crisp-edges;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
 }

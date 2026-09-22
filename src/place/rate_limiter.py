@@ -112,11 +112,13 @@ class SlidingWindowRateLimiter:
             queue.append(now)
             remaining = self.max_requests - len(queue)
             reset_in = max(0.0, (queue[0] + self.window_seconds) - now)
+            retry_after = reset_in if remaining == 0 else 0.0
 
             return RateLimitStatus(
                 allowed=True,
                 remaining=remaining,
                 retry_after=0.0,
+                retry_after=round(retry_after, 2),
                 reset_in=round(reset_in, 2),
             )
 
