@@ -23,7 +23,7 @@ uv sync
 ### 2. Start the Server
 ```bash
 # Using the installed CLI entrypoint
-uv run place
+uv run place-server
 
 # Or run directly via uvicorn
 uv run uvicorn place.app:app --host 0.0.0.0 --port 8000 --reload

@@ -15,11 +15,14 @@ dependencies = [
 ]
 
 [project.scripts]
-place = "place:main"
+place-server = "place:main"
 
 [build-system]
 requires = ["uv_build>=0.12.9,<0.13.0"]
 build-backend = "uv_build"
+
+[tool.uv]
+package = true
 
 [dependency-groups]
 dev = [
