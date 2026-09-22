@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 from place.board import PixelBoard, parse_hex_color, rgb_to_hex
 
@@ -74,4 +76,19 @@ def test_pixel_board_snapshot_and_png() -> None:
 
     png_bytes = board.export_png(scale=2)
     assert png_bytes[:8] == b"\x89PNG\r\n\x1a\n"
+
+
+@pytest.mark.asyncio
+async def test_pixel_board_persists_and_restores() -> None:
+    path = Path("test_board_persist.bin")
+    board = PixelBoard(width=2, height=2, default_color="#000000", save_path=path)
+    await board.set_pixel(0, 0, 255, 0, 0)
+    await board.set_pixel(1, 1, 0, 255, 0)
+
+    restored = PixelBoard(width=2, height=2, default_color="#000000", save_path=path)
+    assert restored.get_pixel_hex(0, 0) == "#FF0000"
+    assert restored.get_pixel_hex(1, 1) == "#00FF00"
+
+    if path.exists():
+        path.unlink()
 

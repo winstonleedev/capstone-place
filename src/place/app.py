@@ -27,6 +27,7 @@ def create_app(
     grid_height: int = settings.grid_height,
     rate_limit_pixels: int = settings.rate_limit_pixels,
     rate_limit_window: float = settings.rate_limit_window_seconds,
+    board_path: str | None = settings.board_path,
 ) -> FastAPI:
     app = FastAPI(
         title="place",
@@ -42,7 +43,7 @@ def create_app(
         allow_headers=["*"],
     )
 
-    board = PixelBoard(width=grid_width, height=grid_height, default_color=settings.default_color)
+    board = PixelBoard(width=grid_width, height=grid_height, default_color=settings.default_color, save_path=board_path)
     rate_limiter = SlidingWindowRateLimiter(max_requests=rate_limit_pixels, window_seconds=rate_limit_window)
     notifier = ConnectionManager()
 
