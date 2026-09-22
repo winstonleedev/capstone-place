@@ -243,7 +243,6 @@
       quotaBadge.classList.add("exhausted");
       quotaBarFill.classList.add("cooldown");
       quotaBarFill.style.width = "0%";
-      const wait = Math.max(1, Math.ceil(retryAfterSeconds));
       const wait = Math.max(1, Math.ceil(retryAfterSeconds || resetInSeconds));
       cooldownTimerEl.textContent = `Cooldown: wait ${wait}s`;
     } else {
@@ -288,8 +287,6 @@
     if (retryAfterSeconds > 0) {
       retryAfterSeconds = Math.max(0, retryAfterSeconds - elapsedSec);
       if (retryAfterSeconds === 0) {
-        // Cooldown just lifted!
-        checkCooldown();
         checkNeeded = true;
       }
     }
@@ -301,8 +298,6 @@
       }
     }
 
-    updateQuotaUI();
-  }, 500);
     if (checkNeeded) {
       checkCooldown();
     } else {
@@ -317,8 +312,6 @@
   // Mouse / Touch coordinate resolver
   function getGridCoordinates(event) {
     const rect = canvasWrapper.getBoundingClientRect();
-    const clientX = event.touches ? event.touches[0].clientX : event.clientX;
-    const clientY = event.touches ? event.touches[0].clientY : event.clientY;
     let clientX, clientY;
     if (event.touches && event.touches.length > 0) {
       clientX = event.touches[0].clientX;
@@ -340,8 +333,6 @@
       return null;
     }
 
-    const normX = (clientX - rect.left) / rect.width;
-    const normY = (clientY - rect.top) / rect.height;
     const normX = Math.min(0.9999, Math.max(0, (clientX - rect.left) / rect.width));
     const normY = Math.min(0.9999, Math.max(0, (clientY - rect.top) / rect.height));
 
