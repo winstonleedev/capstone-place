@@ -140,14 +140,15 @@
   function renderOverlay() {
     const w = overlayCanvas.width;
     const h = overlayCanvas.height;
+    if (!w || !h) return;
     overlayCtx.clearRect(0, 0, w, h);
 
     const cellW = w / gridWidth;
     const cellH = h / gridHeight;
 
     // Grid lines
-    if (showGrid && cellW >= 4) {
-      overlayCtx.strokeStyle = "rgba(0, 0, 0, 0.15)";
+    if (showGrid && cellW >= 2) {
+      overlayCtx.strokeStyle = "rgba(0, 0, 0, 0.25)";
       overlayCtx.lineWidth = 1;
       overlayCtx.beginPath();
       for (let x = 0; x <= gridWidth; x++) {
@@ -529,6 +530,15 @@
     toggleGridBtn.classList.add("active");
     setColor("#E63946");
     initPalette();
+
+    // Pre-initialize canvas dimensions and white background immediately
+    boardCanvas.width = gridWidth;
+    boardCanvas.height = gridHeight;
+    boardCtx.imageSmoothingEnabled = false;
+    boardCtx.fillStyle = "#FFFFFF";
+    boardCtx.fillRect(0, 0, gridWidth, gridHeight);
+    resizeCanvasDisplay();
+
     await loadBoard();
     await checkCooldown();
     connectWebSocket();
