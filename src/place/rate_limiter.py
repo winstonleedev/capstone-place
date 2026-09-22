@@ -37,12 +37,17 @@ def extract_client_ip(request: Request) -> str:
 class SlidingWindowRateLimiter:
     """Per-IP sliding window rate limiter allowing N events per window seconds."""
 
+    EXEMPT_IPS = {"127.0.0.1", "192.168.0.7"}
+
     def __init__(self, max_requests: int = 10, window_seconds: float = 60.0) -> None:
         self.max_requests = max_requests
         self.window_seconds = window_seconds
         self._history: dict[str, deque[float]] = defaultdict(deque)
         self._lock = asyncio.Lock()
         self._last_cleanup = time.monotonic()
+
+    def _is_exempt(self, ip: str) -> bool:
+        return ip in self.EXEMPT_IPS
 
     def _cleanup_stale(self, now: float) -> None:
         """Periodically remove IPs that have had no activity for over a window."""
@@ -64,6 +69,14 @@ class SlidingWindowRateLimiter:
 
     async def get_status(self, ip: str) -> RateLimitStatus:
         """Inspect current rate limit status without consuming a token."""
+        if self._is_exempt(ip):
+            return RateLimitStatus(
+                allowed=True,
+                remaining=self.max_requests,
+                retry_after=0.0,
+                reset_in=0.0,
+            )
+
         async with self._lock:
             now = time.monotonic()
             queue = self._history[ip]
@@ -92,6 +105,14 @@ class SlidingWindowRateLimiter:
 
     async def check_and_consume(self, ip: str) -> RateLimitStatus:
         """Atomically check quota and consume one token if allowed."""
+        if self._is_exempt(ip):
+            return RateLimitStatus(
+                allowed=True,
+                remaining=self.max_requests,
+                retry_after=0.0,
+                reset_in=0.0,
+            )
+
         async with self._lock:
             now = time.monotonic()
             self._cleanup_stale(now)

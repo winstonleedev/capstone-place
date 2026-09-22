@@ -36,6 +36,19 @@ def test_extract_client_ip() -> None:
 
 
 @pytest.mark.asyncio
+async def test_rate_limiter_exempts_local_ips() -> None:
+    limiter = SlidingWindowRateLimiter(max_requests=2, window_seconds=60.0)
+
+    for ip in ("127.0.0.1", "192.168.0.7"):
+        for _ in range(5):
+            status = await limiter.check_and_consume(ip)
+            assert status.allowed is True
+            assert status.remaining == 2
+            assert status.retry_after == 0.0
+            assert status.reset_in == 0.0
+
+
+@pytest.mark.asyncio
 async def test_rate_limiter_allows_up_to_10_and_blocks_11th() -> None:
     limiter = SlidingWindowRateLimiter(max_requests=10, window_seconds=60.0)
     ip = "192.168.1.10"
