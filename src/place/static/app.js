@@ -18,6 +18,10 @@
   let zoomLevel = 1.0;
   let activeTool = "line";
   let logoClickCount = 0;
+  let dragStartCoord = null;
+  let dragEndCoord = null;
+  let shapePreviewPoints = [];
+  let isDraggingShape = false;
   const MIN_ZOOM = 1.0;
   const MAX_ZOOM = 10.0;
 
@@ -378,75 +382,263 @@
     return { x: gx, y: gy };
   }
 
+  function getCanvasPixelHex(x, y) {
+    const pixelData = boardCtx.getImageData(x, y, 1, 1).data;
+    const r = pixelData[0].toString(16).padStart(2, "0");
+    const g = pixelData[1].toString(16).padStart(2, "0");
+    const b = pixelData[2].toString(16).padStart(2, "0");
+    return `#${r}${g}${b}`.toUpperCase();
+  }
+
+  function getLinePixels(start, end) {
+    const points = [];
+    let x0 = start.x;
+    let y0 = start.y;
+    const x1 = end.x;
+    const y1 = end.y;
+    const dx = Math.abs(x1 - x0);
+    const dy = Math.abs(y1 - y0);
+    const sx = x0 < x1 ? 1 : -1;
+    const sy = y0 < y1 ? 1 : -1;
+    let err = dx - dy;
+
+    while (true) {
+      points.push({ x: x0, y: y0 });
+      if (x0 === x1 && y0 === y1) break;
+      const e2 = err * 2;
+      if (e2 > -dy) {
+        err -= dy;
+        x0 += sx;
+      }
+      if (e2 < dx) {
+        err += dx;
+        y0 += sy;
+      }
+    }
+
+    return points;
+  }
+
+  function getRectanglePixels(start, end) {
+    const minX = Math.min(start.x, end.x);
+    const maxX = Math.max(start.x, end.x);
+    const minY = Math.min(start.y, end.y);
+    const maxY = Math.max(start.y, end.y);
+    const points = [];
+
+    for (let y = minY; y <= maxY; y++) {
+      for (let x = minX; x <= maxX; x++) {
+        points.push({ x, y });
+      }
+    }
+
+    return points;
+  }
+
+  function getCirclePixels(start, end) {
+    const cx = start.x;
+    const cy = start.y;
+    const radius = Math.max(1, Math.round(Math.hypot(end.x - start.x, end.y - start.y)));
+    const points = [];
+
+    for (let y = cy - radius; y <= cy + radius; y++) {
+      for (let x = cx - radius; x <= cx + radius; x++) {
+        if ((x - cx) ** 2 + (y - cy) ** 2 <= radius ** 2) {
+          if (x >= 0 && x < gridWidth && y >= 0 && y < gridHeight) {
+            points.push({ x, y });
+          }
+        }
+      }
+    }
+
+    return points;
+  }
+
+  function getShapePixelsForTool(start, end, tool) {
+    if (tool === "line") return getLinePixels(start, end);
+    if (tool === "rectangle") return getRectanglePixels(start, end);
+    if (tool === "circle") return getCirclePixels(start, end);
+    return [{ x: start.x, y: start.y }];
+  }
+
+  function getShapePreviewPoints() {
+    if (!dragStartCoord || !dragEndCoord) return [];
+    return getShapePixelsForTool(dragStartCoord, dragEndCoord, activeTool);
+  }
+
+  function clearShapeDraft() {
+    dragStartCoord = null;
+    dragEndCoord = null;
+    shapePreviewPoints = [];
+    isDraggingShape = false;
+  }
+
+  async function submitPixelRequest(x, y, color) {
+    const res = await fetch("/api/pixel", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ x, y, color }),
+    });
+
+    if (res.status === 429) {
+      const err = await res.json();
+      retryAfterSeconds = err.retry_after || 6.0;
+      resetInSeconds = err.reset_in || retryAfterSeconds;
+      remainingTokens = 0;
+      updateQuotaUI();
+      const wait = Math.max(1, Math.ceil(retryAfterSeconds));
+      showToast(`Rate limit reached: wait ${wait}s before next pixel.`, "error", 2200);
+      await loadBoard();
+      return false;
+    }
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || "Failed to place pixel");
+    }
+
+    const data = await res.json();
+    remainingTokens = data.remaining;
+    resetInSeconds = data.reset_in;
+    retryAfterSeconds = 0;
+    retryAfterSeconds = data.retry_after || (remainingTokens === 0 ? resetInSeconds : 0.0);
+    updateQuotaUI();
+    return true;
+  }
+
+  async function commitShapePixels(points) {
+    if (!points.length) return;
+
+    if (points.length > remainingTokens) {
+      showToast(`Shape needs ${points.length} pixels but only ${remainingTokens} remain.`, "warning", 2200);
+      return;
+    }
+
+    for (const point of points) {
+      paintPixel(point.x, point.y, currentColor);
+      renderOverlay();
+
+      try {
+        const ok = await submitPixelRequest(point.x, point.y, currentColor);
+        if (!ok) {
+          return;
+        }
+      } catch (err) {
+        console.error(err);
+        showToast(err.message, "error");
+        await loadBoard();
+        return;
+      }
+    }
+
+    showToast(`${points.length} pixels placed`, "success", 1800);
+  }
+
+  async function applyFillTool(startX, startY) {
+    const targetColor = getCanvasPixelHex(startX, startY);
+    if (targetColor.toUpperCase() === currentColor.toUpperCase()) {
+      showToast("Fill is already using this color.", "info", 1200);
+      return;
+    }
+
+    if (remainingTokens <= 0) {
+      const wait = Math.max(1, Math.ceil(retryAfterSeconds || resetInSeconds || 1));
+      showToast(`Rate limited! ${wait}s remaining before next placement.`, "warning", 1800);
+      return;
+    }
+
+    const queue = [[startX, startY]];
+    const seen = new Set([`${startX},${startY}`]);
+    const fillPixels = [];
+
+    while (queue.length > 0) {
+      const [x, y] = queue.shift();
+      fillPixels.push({ x, y });
+
+      const neighbors = [
+        [x + 1, y],
+        [x - 1, y],
+        [x, y + 1],
+        [x, y - 1],
+      ];
+
+      for (const [nextX, nextY] of neighbors) {
+        if (nextX < 0 || nextX >= gridWidth || nextY < 0 || nextY >= gridHeight) continue;
+        const key = `${nextX},${nextY}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+
+        if (getCanvasPixelHex(nextX, nextY).toUpperCase() === targetColor.toUpperCase()) {
+          queue.push([nextX, nextY]);
+        }
+      }
+    }
+
+    if (fillPixels.length > remainingTokens) {
+      showToast(`Fill needs ${fillPixels.length} pixels but you have ${remainingTokens} left.`, "warning", 2200);
+      return;
+    }
+
+    for (const point of fillPixels) {
+      paintPixel(point.x, point.y, currentColor);
+      renderOverlay();
+
+      try {
+        const ok = await submitPixelRequest(point.x, point.y, currentColor);
+        if (!ok) {
+          return;
+        }
+      } catch (err) {
+        console.error(err);
+        showToast(err.message, "error");
+        await loadBoard();
+        return;
+      }
+    }
+
+    showToast(`Filled ${fillPixels.length} pixels`, "success", 1800);
+  }
+
   // Place pixel action
   async function handleCanvasClick(event) {
     const coord = getGridCoordinates(event);
     if (!coord) return;
 
     if (isEyedropperActive) {
-      // Sample color from board canvas
-      const pixelData = boardCtx.getImageData(coord.x, coord.y, 1, 1).data;
-      const r = pixelData[0].toString(16).padStart(2, "0");
-      const g = pixelData[1].toString(16).padStart(2, "0");
-      const b = pixelData[2].toString(16).padStart(2, "0");
-      const picked = `#${r}${g}${b}`.toUpperCase();
+      const picked = getCanvasPixelHex(coord.x, coord.y);
       setColor(picked);
       toggleEyedropper(false);
       showToast(`Color picked: ${picked}`, "info", 1800);
       return;
     }
 
+    if (activeTool === "fill") {
+      await applyFillTool(coord.x, coord.y);
+      return;
+    }
+
+    if (activeTool === "line" || activeTool === "circle" || activeTool === "rectangle") {
+      return;
+    }
+
     // Check local quota
-    // Check local quota; if 0, verify with server before rejecting
     if (remainingTokens <= 0) {
       const wait = Math.max(1, Math.ceil(retryAfterSeconds));
       showToast(`Rate limited! You can place 10 pixels/min. Wait ${wait}s.`, "warning");
       return;
-      await checkCooldown();
-      if (remainingTokens <= 0) {
-        const wait = Math.max(1, Math.ceil(retryAfterSeconds || resetInSeconds || 1));
-        showToast(`Rate limited! 10 pixels/min max. Wait ${wait}s.`, "warning");
-        return;
-      }
     }
 
     const { x, y } = coord;
     const colorToPlace = currentColor;
 
-    // Optimistic local update
     paintPixel(x, y, colorToPlace);
     renderOverlay();
 
     try {
-      const res = await fetch("/api/pixel", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ x, y, color: colorToPlace }),
-      });
-
-      if (res.status === 429) {
-        const err = await res.json();
-        retryAfterSeconds = err.retry_after || 6.0;
-        resetInSeconds = err.reset_in || retryAfterSeconds;
-        remainingTokens = 0;
-        updateQuotaUI();
-        const wait = Math.max(1, Math.ceil(retryAfterSeconds));
-        showToast(`Rate limit reached: wait ${wait}s before next pixel.`, "error");
-        await loadBoard();
+      const ok = await submitPixelRequest(x, y, colorToPlace);
+      if (!ok) {
         return;
       }
-
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.detail || "Failed to place pixel");
-      }
-
-      const data = await res.json();
-      remainingTokens = data.remaining;
-      resetInSeconds = data.reset_in;
-      retryAfterSeconds = 0;
-      retryAfterSeconds = data.retry_after || (remainingTokens === 0 ? resetInSeconds : 0.0);
-      updateQuotaUI();
     } catch (err) {
       console.error(err);
       showToast(err.message, "error");
@@ -559,7 +751,23 @@
   zoomInBtn.addEventListener("click", () => setZoomLevel(zoomLevel + 0.1));
   zoomOutBtn.addEventListener("click", () => setZoomLevel(zoomLevel - 0.1));
 
-  canvasWrapper.addEventListener("mousemove", (e) => {
+  canvasWrapper.addEventListener("pointerdown", (event) => {
+    if (isEyedropperActive) return;
+    if (activeTool !== "line" && activeTool !== "circle" && activeTool !== "rectangle") {
+      handleCanvasClick(event);
+      return;
+    }
+
+    const coord = getGridCoordinates(event);
+    if (!coord) return;
+    dragStartCoord = coord;
+    dragEndCoord = coord;
+    shapePreviewPoints = [coord];
+    isDraggingShape = true;
+    renderOverlay();
+  });
+
+  canvasWrapper.addEventListener("pointermove", (e) => {
     const coord = getGridCoordinates(e);
     hoverCoord = coord;
     if (coord) {
@@ -567,12 +775,34 @@
     } else {
       coordDisplay.textContent = "X: --, Y: --";
     }
+
+    if (isDraggingShape && dragStartCoord) {
+      dragEndCoord = coord || dragEndCoord;
+      shapePreviewPoints = getShapePreviewPoints();
+    }
+
     renderOverlay();
   });
 
-  canvasWrapper.addEventListener("mouseleave", () => {
-    hoverCoord = null;
-    coordDisplay.textContent = "X: --, Y: --";
+  canvasWrapper.addEventListener("pointerup", async (event) => {
+    if (!isDraggingShape || !dragStartCoord) return;
+
+    const endCoord = getGridCoordinates(event) || dragEndCoord || dragStartCoord;
+    const points = getShapePixelsForTool(dragStartCoord, endCoord, activeTool);
+    isDraggingShape = false;
+    dragEndCoord = endCoord;
+    shapePreviewPoints = points;
+    renderOverlay();
+
+    await commitShapePixels(points);
+    clearShapeDraft();
+  });
+
+  canvasWrapper.addEventListener("pointerleave", () => {
+    if (!isDraggingShape) {
+      hoverCoord = null;
+      coordDisplay.textContent = "X: --, Y: --";
+    }
     renderOverlay();
   });
 
