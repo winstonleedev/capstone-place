@@ -15,6 +15,9 @@
   let hoverCoord = null;
   let totalPixelsPlaced = 0;
   let socket = null;
+  let zoomLevel = 1.0;
+  const MIN_ZOOM = 0.5;
+  const MAX_ZOOM = 4.0;
 
   // DOM elements
   const boardCanvas = document.getElementById("boardCanvas");
@@ -40,6 +43,8 @@
   const paletteContainer = document.getElementById("paletteContainer");
 
   const toggleGridBtn = document.getElementById("toggleGridBtn");
+  const zoomInBtn = document.getElementById("zoomInBtn");
+  const zoomOutBtn = document.getElementById("zoomOutBtn");
   const downloadBtn = document.getElementById("downloadBtn");
   const eyedropperBtn = document.getElementById("eyedropperBtn");
   const toastContainer = document.getElementById("toastContainer");
@@ -110,6 +115,12 @@
   }
 
   // Canvas Viewport & Scaling
+  function setZoomLevel(nextZoom) {
+    zoomLevel = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, nextZoom));
+    canvasWrapper.style.transform = `scale(${zoomLevel})`;
+    renderOverlay();
+  }
+
   function resizeCanvasDisplay() {
     const availWidth = Math.max(100, viewport.clientWidth - 24);
     const availHeight = Math.max(100, viewport.clientHeight - 24);
@@ -133,6 +144,7 @@
     overlayCanvas.width = displayWidth;
     overlayCanvas.height = displayHeight;
 
+    setZoomLevel(zoomLevel);
     renderOverlay();
   }
 
@@ -333,11 +345,13 @@
       return null;
     }
 
-    const normX = Math.min(0.9999, Math.max(0, (clientX - rect.left) / rect.width));
-    const normY = Math.min(0.9999, Math.max(0, (clientY - rect.top) / rect.height));
+    const localX = clientX - rect.left;
+    const localY = clientY - rect.top;
+    const unscaledX = localX / Math.max(1e-6, rect.width) * boardCanvas.width;
+    const unscaledY = localY / Math.max(1e-6, rect.height) * boardCanvas.height;
 
-    const gx = Math.floor(normX * gridWidth);
-    const gy = Math.floor(normY * gridHeight);
+    const gx = Math.floor(unscaledX);
+    const gy = Math.floor(unscaledY);
 
     if (gx < 0 || gx >= gridWidth || gy < 0 || gy >= gridHeight) {
       return null;
@@ -464,6 +478,15 @@
   // Event Listeners
   window.addEventListener("resize", resizeCanvasDisplay);
 
+  viewport.addEventListener("wheel", (event) => {
+    event.preventDefault();
+    const delta = event.deltaY > 0 ? -0.1 : 0.1;
+    setZoomLevel(zoomLevel + delta);
+  }, { passive: false });
+
+  zoomInBtn.addEventListener("click", () => setZoomLevel(zoomLevel + 0.25));
+  zoomOutBtn.addEventListener("click", () => setZoomLevel(zoomLevel - 0.25));
+
   canvasWrapper.addEventListener("mousemove", (e) => {
     const coord = getGridCoordinates(e);
     hoverCoord = coord;
@@ -528,6 +551,7 @@
     boardCtx.imageSmoothingEnabled = false;
     boardCtx.fillStyle = "#FFFFFF";
     boardCtx.fillRect(0, 0, gridWidth, gridHeight);
+    setZoomLevel(1.0);
     resizeCanvasDisplay();
 
     await loadBoard();
