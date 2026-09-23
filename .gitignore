@@ -12,3 +12,4 @@ wheels/
 *.bin
 .pytest-cache/
 **/__pycache__/
+!backups/v1.bin
