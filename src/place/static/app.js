@@ -522,7 +522,8 @@
   async function commitShapePixels(points) {
     if (!points.length) return;
 
-    if (points.length > remainingTokens) {
+    const isLocalHost = ["localhost", "127.0.0.1"].includes(window.location.hostname);
+    if (!isLocalHost && points.length > remainingTokens) {
       showToast(`Shape needs ${points.length} pixels but only ${remainingTokens} remain.`, "warning", 2200);
       return;
     }
