@@ -16,8 +16,8 @@
   let totalPixelsPlaced = 0;
   let socket = null;
   let zoomLevel = 1.0;
-  const MIN_ZOOM = 0.5;
-  const MAX_ZOOM = 4.0;
+  const MIN_ZOOM = 1.0;
+  const MAX_ZOOM = 10.0;
 
   // DOM elements
   const boardCanvas = document.getElementById("boardCanvas");
@@ -484,8 +484,8 @@
     setZoomLevel(zoomLevel + delta);
   }, { passive: false });
 
-  zoomInBtn.addEventListener("click", () => setZoomLevel(zoomLevel + 0.25));
-  zoomOutBtn.addEventListener("click", () => setZoomLevel(zoomLevel - 0.25));
+  zoomInBtn.addEventListener("click", () => setZoomLevel(zoomLevel + 0.1));
+  zoomOutBtn.addEventListener("click", () => setZoomLevel(zoomLevel - 0.1));
 
   canvasWrapper.addEventListener("mousemove", (e) => {
     const coord = getGridCoordinates(e);
