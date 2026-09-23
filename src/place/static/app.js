@@ -157,6 +157,9 @@
   }
 
   function resizeCanvasDisplay() {
+    const prevScrollLeft = viewport.scrollLeft;
+    const prevScrollTop = viewport.scrollTop;
+
     const availWidth = Math.max(100, viewport.clientWidth - 24);
     const availHeight = Math.max(100, viewport.clientHeight - 24);
     const aspectRatio = gridWidth / gridHeight;
@@ -177,14 +180,17 @@
     canvasWrapper.style.width = `${Math.round(displayWidth * zoomLevel)}px`;
     canvasWrapper.style.height = `${Math.round(displayHeight * zoomLevel)}px`;
 
-    viewport.scrollLeft = 0;
-    viewport.scrollTop = 0;
-
     // Ensure overlay canvas internal size matches display size for crisp grid drawing
     overlayCanvas.width = displayWidth;
     overlayCanvas.height = displayHeight;
 
     setZoomLevel(zoomLevel);
+
+    const maxScrollLeft = Math.max(0, canvasWrapper.scrollWidth - viewport.clientWidth);
+    const maxScrollTop = Math.max(0, canvasWrapper.scrollHeight - viewport.clientHeight);
+    viewport.scrollLeft = Math.min(prevScrollLeft, maxScrollLeft);
+    viewport.scrollTop = Math.min(prevScrollTop, maxScrollTop);
+
     renderOverlay();
   }
 
@@ -287,6 +293,10 @@
   // Quota & Rate Limit Updates
   function updateQuotaUI() {
     quotaBadge.textContent = `${remainingTokens} / ${maxTokens} pixels`;
+    if (isLocalHost) {
+      remainingTokens = maxTokens;
+      return;
+    }
     if (remainingTokens === 0) {
       quotaBadge.classList.add("exhausted");
       quotaBarFill.classList.add("cooldown");
@@ -519,10 +529,11 @@
     return true;
   }
 
+  const isLocalHost = ["localhost", "127.0.0.1"].includes(window.location.hostname);
+
   async function commitShapePixels(points) {
     if (!points.length) return;
 
-    const isLocalHost = ["localhost", "127.0.0.1"].includes(window.location.hostname);
     if (!isLocalHost && points.length > remainingTokens) {
       showToast(`Shape needs ${points.length} pixels but only ${remainingTokens} remain.`, "warning", 2200);
       return;

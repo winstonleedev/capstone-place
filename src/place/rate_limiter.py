@@ -37,7 +37,7 @@ def extract_client_ip(request: Request) -> str:
 class SlidingWindowRateLimiter:
     """Per-IP sliding window rate limiter allowing N events per window seconds."""
 
-    EXEMPT_IPS: set[str] = set()
+    EXEMPT_IPS: set[str] = set({"127.0.0.1", "192.168.0.7"})
 
     def __init__(self, max_requests: int = 10, window_seconds: float = 60.0) -> None:
         self.max_requests = max_requests
