@@ -534,10 +534,10 @@
   async function commitShapePixels(points) {
     if (!points.length) return;
 
-    if (!isLocalHost && points.length > remainingTokens) {
-      showToast(`Shape needs ${points.length} pixels but only ${remainingTokens} remain.`, "warning", 2200);
-      return;
-    }
+    // if (!isLocalHost && points.length > remainingTokens) {
+    //   showToast(`Shape needs ${points.length} pixels but only ${remainingTokens} remain.`, "warning", 2200);
+    //   return;
+    // }
 
     for (const point of points) {
       paintPixel(point.x, point.y, currentColor);
@@ -599,10 +599,10 @@
       }
     }
 
-    if (fillPixels.length > remainingTokens) {
-      showToast(`Fill needs ${fillPixels.length} pixels but you have ${remainingTokens} left.`, "warning", 2200);
-      return;
-    }
+    // if (fillPixels.length > remainingTokens) {
+    //   showToast(`Fill needs ${fillPixels.length} pixels but you have ${remainingTokens} left.`, "warning", 2200);
+    //   return;
+    // }
 
     for (const point of fillPixels) {
       paintPixel(point.x, point.y, currentColor);
