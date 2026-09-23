@@ -32,9 +32,16 @@
       </div>
 
       <div class="action-buttons">
+        <div class="toolbox" id="toolbox" aria-hidden="true">
+          <button class="tool-btn active" type="button" data-tool="line" title="Line tool">Line</button>
+          <button class="tool-btn" type="button" data-tool="circle" title="Circle tool">Circle</button>
+          <button class="tool-btn" type="button" data-tool="rectangle" title="Rectangle tool">Rect</button>
+          <label class="tool-btn tool-import" for="imageImportInput" data-tool="image" title="Import image">Image</label>
+          <input id="imageImportInput" type="file" accept="image/*" hidden>
+        </div>
         <button id="zoomOutBtn" class="btn-secondary" title="Zoom out">−</button>
         <button id="zoomInBtn" class="btn-secondary" title="Zoom in">+</button>
-        <button id="toggleGridBtn" class="btn-secondary" title="Toggle pixel grid lines">
+        <button id="toggleGridBtn" class="btn-secondary" title="Toggle pixel grid lines" style="display: none;">
           <span class="btn-icon">▦</span> Grid
         </button>
         <button id="downloadBtn" class="btn-secondary" title="Export canvas snapshot as PNG">

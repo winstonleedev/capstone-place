@@ -16,6 +16,8 @@
   let totalPixelsPlaced = 0;
   let socket = null;
   let zoomLevel = 1.0;
+  let activeTool = "line";
+  let logoClickCount = 0;
   const MIN_ZOOM = 1.0;
   const MAX_ZOOM = 10.0;
 
@@ -47,6 +49,10 @@
   const zoomOutBtn = document.getElementById("zoomOutBtn");
   const downloadBtn = document.getElementById("downloadBtn");
   const eyedropperBtn = document.getElementById("eyedropperBtn");
+  const toolboxEl = document.getElementById("toolbox");
+  const logoPixelEl = document.querySelector(".logo-pixel");
+  const imageImportInput = document.getElementById("imageImportInput");
+  const toolButtons = Array.from(document.querySelectorAll(".tool-btn"));
   const toastContainer = document.getElementById("toastContainer");
 
   // Standard vibrant palette (inspired by iconic pixel art / r/place palettes)
@@ -112,6 +118,23 @@
     isEyedropperActive = active !== undefined ? active : !isEyedropperActive;
     eyedropperBtn.classList.toggle("active", isEyedropperActive);
     canvasWrapper.classList.toggle("eyedropper-mode", isEyedropperActive);
+  }
+
+  function setActiveTool(tool) {
+    activeTool = tool;
+    toolButtons.forEach((button) => {
+      const isSelected = button.dataset.tool === tool;
+      button.classList.toggle("active", isSelected);
+    });
+  }
+
+  function unlockToolbox() {
+    if (!toolboxEl) return;
+    if (toolboxEl.classList.contains("is-visible")) return;
+
+    toolboxEl.classList.add("is-visible");
+    toolboxEl.setAttribute("aria-hidden", "false");
+    showToast("Advanced toolbox unlocked", "success", 1800);
   }
 
   // Canvas Viewport & Scaling
@@ -472,6 +495,59 @@
   }
 
   // Event Listeners
+  if (logoPixelEl) {
+    logoPixelEl.addEventListener("click", () => {
+      logoClickCount += 1;
+
+      if (logoClickCount >= 5) {
+        unlockToolbox();
+        logoClickCount = 5;
+        return;
+      }
+
+      if (logoClickCount < 5) {
+        const remaining = 5 - logoClickCount;
+        showToast(`Toolbox unlock: ${remaining} click${remaining === 1 ? "" : "s"} left`, "info", 900);
+      }
+    });
+  }
+
+  toolButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      const tool = button.dataset.tool;
+      if (!tool) return;
+      setActiveTool(tool);
+    });
+  });
+
+  if (imageImportInput) {
+    imageImportInput.addEventListener("change", (event) => {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (loadEvent) => {
+        const image = new Image();
+        image.onload = () => {
+          const tempCanvas = document.createElement("canvas");
+          tempCanvas.width = image.width;
+          tempCanvas.height = image.height;
+          const tempCtx = tempCanvas.getContext("2d");
+          tempCtx.drawImage(image, 0, 0);
+
+          const { data, width, height } = tempCtx.getImageData(0, 0, image.width, image.height);
+          const boardImageData = boardCtx.createImageData(width, height);
+          boardImageData.data.set(data);
+          boardCtx.putImageData(boardImageData, 0, 0);
+          showToast(`Imported image: ${file.name}`, "success", 1800);
+          renderOverlay();
+        };
+        image.src = loadEvent.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
   window.addEventListener("resize", resizeCanvasDisplay);
 
   viewport.addEventListener("wheel", (event) => {

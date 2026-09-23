@@ -65,6 +65,8 @@ html, body {
 .logo-pixel {
   color: #ef4444;
   font-family: var(--font-mono);
+  cursor: pointer;
+  user-select: none;
 }
 
 .logo-text {
@@ -129,6 +131,49 @@ html, body {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.toolbox {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  background: rgba(38, 42, 54, 0.8);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+}
+
+.toolbox.is-visible {
+  display: flex;
+}
+
+.tool-btn {
+  cursor: pointer;
+  border: 1px solid var(--border-color);
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  padding: 5px 9px;
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  transition: all 0.15s ease;
+}
+
+.tool-btn:hover {
+  background: #32384a;
+  border-color: #4b5563;
+}
+
+.tool-btn.active {
+  background: var(--accent-color);
+  border-color: var(--accent-color);
+}
+
+.tool-import {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 button {
