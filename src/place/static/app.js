@@ -10,7 +10,7 @@
   let lastQuotaCheckTime = Date.now();
 
   let currentColor = "#E63946";
-  let showGrid = true;
+  let showGrid = false;
   let isEyedropperActive = false;
   let hoverCoord = null;
   let totalPixelsPlaced = 0;
@@ -176,32 +176,28 @@
       overlayCtx.stroke();
     }
 
-    // Hover highlight
+    // Hover highlight: show only the current pixel as a single-pixel outline
     if (hoverCoord) {
       const { x, y } = hoverCoord;
-      const rx = Math.round(x * cellW);
-      const ry = Math.round(y * cellH);
-      const rw = Math.round((x + 1) * cellW) - rx;
-      const rh = Math.round((y + 1) * cellH) - ry;
+      const px = Math.round(x * cellW) + 0.5;
+      const py = Math.round(y * cellH) + 0.5;
+      const pw = Math.max(1, Math.round(cellW));
+      const ph = Math.max(1, Math.round(cellH));
 
       if (isEyedropperActive) {
-        overlayCtx.strokeStyle = "#3b82f6";
-        overlayCtx.lineWidth = 2;
-        overlayCtx.strokeRect(rx + 1, ry + 1, rw - 2, rh - 2);
+        overlayCtx.fillStyle = "#3b82f6";
+        overlayCtx.beginPath();
+        overlayCtx.arc(px, py, 1.5, 0, Math.PI * 2);
+        overlayCtx.fill();
       } else {
-        // Outline current hover box
-        overlayCtx.fillStyle = currentColor;
-        overlayCtx.globalAlpha = 0.35;
-        overlayCtx.fillRect(rx, ry, rw, rh);
-        overlayCtx.globalAlpha = 1.0;
+        // overlayCtx.strokeStyle = "#ffffff";
+        // overlayCtx.lineWidth = 1.5;
+        // overlayCtx.strokeRect(px - 0.5, py - 0.5, pw - 1, ph - 1);
 
-        overlayCtx.strokeStyle = "#ffffff";
-        overlayCtx.lineWidth = 2;
-        overlayCtx.strokeRect(rx + 0.5, ry + 0.5, rw - 1, rh - 1);
-
-        overlayCtx.strokeStyle = "#000000";
-        overlayCtx.lineWidth = 1;
-        overlayCtx.strokeRect(rx + 1.5, ry + 1.5, rw - 3, rh - 3);
+        overlayCtx.fillStyle = "#000000";
+        overlayCtx.beginPath();
+        overlayCtx.arc(px, py, 1.25, 0, Math.PI * 2);
+        overlayCtx.fill();
       }
     }
   }
@@ -541,7 +537,8 @@
 
   // Initialization
   async function init() {
-    toggleGridBtn.classList.add("active");
+    showGrid = false;
+    toggleGridBtn.classList.remove("active");
     setColor("#E63946");
     initPalette();
 
