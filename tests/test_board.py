@@ -1,7 +1,7 @@
 from pathlib import Path
 
 import pytest
-from place.board import PixelBoard, parse_hex_color, rgb_to_hex
+from place.board import PixelBoard, import_board, parse_hex_color, rgb_to_hex
 
 
 def test_parse_hex_color_valid() -> None:
@@ -91,4 +91,23 @@ async def test_pixel_board_persists_and_restores() -> None:
 
     if path.exists():
         path.unlink()
+
+
+@pytest.mark.asyncio
+async def test_import_board_centers_source_in_target() -> None:
+    source_path = Path("test_board_import.bin")
+    source = PixelBoard(width=2, height=2, default_color="#FFFFFF", save_path=source_path)
+    await source.set_pixel(0, 0, 255, 0, 0)
+    await source.set_pixel(1, 1, 0, 255, 0)
+
+    imported = import_board(width=6, height=5, board_path=source_path)
+
+    assert imported.width == 6
+    assert imported.height == 5
+    assert imported.get_pixel_hex(2, 1) == "#FF0000"
+    assert imported.get_pixel_hex(3, 2) == "#00FF00"
+    assert imported.get_pixel_hex(0, 0) == "#FFFFFF"
+
+    if source_path.exists():
+        source_path.unlink()
 

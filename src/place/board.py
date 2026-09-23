@@ -34,6 +34,60 @@ def rgb_to_hex(r: int, g: int, b: int) -> str:
     return f"#{r:02X}{g:02X}{b:02X}"
 
 
+def import_board(width: int, height: int, board_path: str | Path, default_color: str = "#FFFFFF") -> "PixelBoard":
+    """Load a saved board and place it centered on a new board of the given size."""
+    path = Path(board_path)
+    if not path.exists():
+        raise FileNotFoundError(f"Board file not found: {path}")
+
+    payload = path.read_bytes()
+    if len(payload) < 24 or payload[:8] != BOARD_MAGIC:
+        raise ValueError(f"Board file is not a valid PLACEBIN snapshot: {path}")
+
+    _, source_width, source_height, _ = struct.unpack(">8sIIQ", payload[:24])
+    pixel_bytes = payload[24:]
+    expected_size = source_width * source_height * 3
+    if len(pixel_bytes) != expected_size:
+        raise ValueError(f"Board file size does not match header for {source_width}x{source_height}: {path}")
+    if source_width <= 0 or source_height <= 0:
+        raise ValueError(f"Source board dimensions must be positive, got {source_width}x{source_height}")
+
+    target = PixelBoard(width=width, height=height, default_color=default_color)
+    def_r, def_g, def_b = parse_hex_color(default_color)
+    default_rgb = (def_r, def_g, def_b)
+
+    if source_width <= width:
+        src_x_start = 0
+        dst_x_start = (width - source_width) // 2
+        copy_width = source_width
+    else:
+        src_x_start = (source_width - width) // 2
+        dst_x_start = 0
+        copy_width = width
+
+    if source_height <= height:
+        src_y_start = 0
+        dst_y_start = (height - source_height) // 2
+        copy_height = source_height
+    else:
+        src_y_start = (source_height - height) // 2
+        dst_y_start = 0
+        copy_height = height
+
+    for y in range(copy_height):
+        for x in range(copy_width):
+            src_idx = ((src_y_start + y) * source_width + (src_x_start + x)) * 3
+            dst_idx = ((dst_y_start + y) * width + (dst_x_start + x)) * 3
+            target._data[dst_idx:dst_idx + 3] = pixel_bytes[src_idx:src_idx + 3]
+
+    target.total_pixels_placed = 0
+    for i in range(0, len(target._data), 3):
+        if tuple(target._data[i:i + 3]) != default_rgb:
+            target.total_pixels_placed += 1
+
+    return target
+
+
 class PixelBoard:
     """Thread-safe in-memory 2D pixel grid for r/place style canvas."""
 
