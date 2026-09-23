@@ -144,7 +144,15 @@
   // Canvas Viewport & Scaling
   function setZoomLevel(nextZoom) {
     zoomLevel = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, nextZoom));
-    canvasWrapper.style.transform = `scale(${zoomLevel})`;
+
+    const baseWidth = Number(canvasWrapper.dataset.baseWidth || canvasWrapper.clientWidth || gridWidth);
+    const baseHeight = Number(canvasWrapper.dataset.baseHeight || canvasWrapper.clientHeight || gridHeight);
+    const scaledWidth = Math.max(1, Math.round(baseWidth * zoomLevel));
+    const scaledHeight = Math.max(1, Math.round(baseHeight * zoomLevel));
+
+    canvasWrapper.style.width = `${scaledWidth}px`;
+    canvasWrapper.style.height = `${scaledHeight}px`;
+    canvasWrapper.style.transform = "none";
     renderOverlay();
   }
 
@@ -164,8 +172,13 @@
     displayWidth = Math.floor(displayWidth);
     displayHeight = Math.floor(displayHeight);
 
-    canvasWrapper.style.width = `${displayWidth}px`;
-    canvasWrapper.style.height = `${displayHeight}px`;
+    canvasWrapper.dataset.baseWidth = String(displayWidth);
+    canvasWrapper.dataset.baseHeight = String(displayHeight);
+    canvasWrapper.style.width = `${Math.round(displayWidth * zoomLevel)}px`;
+    canvasWrapper.style.height = `${Math.round(displayHeight * zoomLevel)}px`;
+
+    viewport.scrollLeft = 0;
+    viewport.scrollTop = 0;
 
     // Ensure overlay canvas internal size matches display size for crisp grid drawing
     overlayCanvas.width = displayWidth;
